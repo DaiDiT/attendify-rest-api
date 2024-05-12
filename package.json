@@ -1,0 +1,24 @@
+{
+  "name": "attendify_rest_api",
+  "version": "1.0.0",
+  "description": "restful api for mobile app attendify",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaiDiT/attendify-rest-api.git"
+  },
+  "keywords": [
+    "rest",
+    "api",
+    "nodejs"
+  ],
+  "author": "daidit",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DaiDiT/attendify-rest-api/issues"
+  },
+  "homepage": "https://github.com/DaiDiT/attendify-rest-api#readme"
+}
