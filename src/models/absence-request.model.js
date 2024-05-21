@@ -3,7 +3,7 @@ const modelOptions = require("./model.options.js")
 
 const absenceRequestSchema = new mongoose.Schema({
     user: {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
     },

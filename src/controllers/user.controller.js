@@ -34,7 +34,7 @@ const register = async (req, res) => {
 
 const profile = async (req, res) => {
     try {
-        const user = await userModel.findById(req.body.userId)
+        const user = await userModel.findById(req.user._id)
 
         user.password = undefined
         user.salt = undefined
@@ -47,15 +47,17 @@ const profile = async (req, res) => {
 
 const updatePassword = async (req, res) => {
     try {
-        const { userId, password, newPassword } = req.body
+        const { password, newPassword } = req.body
     
-        const user = await userModel.findById(userId)
+        const user = await userModel.findById(req.user._id)
     
         if (!user) return responseHandler.notFound(res)
     
         if (!user.validPassword(password)) return responseHandler.badRequest(res, "Wrong password")
     
         user.setPassword(newPassword)
+
+        await user.save()
     
         responseHandler.ok(res, {"message": "Password updated!"})
     } catch {

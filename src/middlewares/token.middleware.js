@@ -2,7 +2,7 @@ const jsonwebtoken = require("jsonwebtoken")
 const responseHandler = require("../handlers/response.handler.js")
 const userModel = require("../models/user.model.js")
 
-const tokenDecode = (req) => {
+const decodeToken = (req) => {
     try {
         const bearerHeader = req.headers["authorization"]
 
@@ -22,11 +22,11 @@ const tokenDecode = (req) => {
 }
 
 const auth = async (req, res, next) => {
-    const tokenDecoded = tokenDecode(req)
+    const decodedToken = decodeToken(req)
 
-    if (!tokenDecoded) return responseHandler.unauthorize(res)
-
-    const user = await userModel.findById(tokenDecoded.data)
+    if (!decodedToken) return responseHandler.unauthorize(res)
+    
+    const user = await userModel.findById(decodedToken.data)
 
     if (!user) return responseHandler.unauthorize(res)
 
@@ -35,4 +35,4 @@ const auth = async (req, res, next) => {
     next()
 }
 
-module.exports = { auth, tokenDecode }
+module.exports = { auth, decodeToken }
