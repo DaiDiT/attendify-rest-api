@@ -9,7 +9,7 @@ const attendanceSchema = new mongoose.Schema({
     },
     entryDate: {
         type: Date,
-        required: true
+        required: false
     },
     exitDate: {
         type: Date,
@@ -18,7 +18,7 @@ const attendanceSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ["Hadir", "Izin", "Sakit", "Alfa"],
-        required: true
+        default: "Alfa"
     }
 }, modelOptions)
 

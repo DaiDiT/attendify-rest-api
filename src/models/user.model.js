@@ -71,19 +71,15 @@ userSchema.methods.validPassword = function (password) {
     return this.password === hash
 }
 
-userSchema.methods.updateGrade = function (date) {
-    this.year = date.getFullYear()
-
-    const gradeMap = {
-        "X": "XI",
-        "XI": "XII"
+userSchema.pre('remove', async function(next) {
+    try {
+        await this.model('Attendance').deleteMany({ user: this._id })
+        await this.model('AbsenceRequest').deleteMany({ user: this._id })
+        next()
+    } catch (err) {
+        next(err)
     }
-
-    this.gradeClass = this.gradeClass.replace(
-        /(X|XI)/,
-        match => gradeMap[match]
-    )
-}
+})
 
 const userModel = mongoose.model("User", userSchema)
 

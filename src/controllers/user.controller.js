@@ -94,13 +94,68 @@ const login = async (req, res) => {
     }
 }
 
-const logout = async (req, res) => {
-    // Hapus token
-    res.send("Berhasil keluar")
+const getStudents = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
+        
+        const students = await userModel.find().select("studentIdNumber fullName gradeClass").sort({ studentIdNumber: 1 })
+
+        responseHandler.ok(res, {
+            students
+        })
+    } catch {
+        responseHandler.error(res)
+    }
 }
 
-const delWhoPassed = async (req, res) => {
+const promotion = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
+        
+        const date = Date.now
+                
+        const year = date.getFullYear().toString()
 
+        const gradeMap = {
+            "X": "XI",
+            "XI": "XII",
+            "10": "11",
+            "11": "12"
+        }
+
+        const studentsToPromote = await userModel.find({ class: { $in: ["X", "XI"] } })
+
+        const updatePromises = studentsToPromote.map(student => {
+            const newGradeClass = student.gradeClass.replace(/X|XI|10|11/, match => gradeMap[match])
+            return userModel.updateOne({ _id: student._id }, { year: year }, { gradeClass: newGradeClass })
+        })
+
+        await Promise.all(updatePromises)
+
+        responseHandler.ok(res, {"message": "Students promoted"})
+    } catch {
+        responseHandler.error(res)
+    }
 }
 
-module.exports = { register, profile, updatePassword, login, logout }
+const graduation = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
+            
+        const date = Date.now
+                
+        const year = (date.getFullYear() - 1).toString()
+
+        const studentsToDelete = await userModel.find({ year: 2019 });
+
+        for (const student of studentsToDelete) {
+            await student.remove();
+        }
+
+        responseHandler.ok(res, {"message": "Students deleted"})
+    } catch {
+        responseHandler.error(res)
+    }
+}
+
+module.exports = { register, profile, updatePassword, login, getStudents, promotion, graduation }

@@ -12,6 +12,10 @@ router.get("/", tokenMiddleware.auth, userController.profile)
 
 router.put("/", tokenMiddleware.auth, userController.updatePassword)
 
-router.post("/logout", tokenMiddleware.auth, userController.logout)
+router.get("/student", tokenMiddleware.auth, userController.getStudents)
+
+router.put("/promotion", tokenMiddleware.auth, userController.promotion)
+
+router.delete("/graduation", tokenMiddleware.auth, userController.graduation)
 
 module.exports = router

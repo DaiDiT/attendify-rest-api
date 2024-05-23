@@ -8,8 +8,8 @@ router.post("/", tokenMiddleware.auth, attendanceController.store)
 
 router.get("/", tokenMiddleware.auth, attendanceController.retrieve)
 
-// router.get("/week", attendanceController.profile)
-
 router.put("/", tokenMiddleware.auth, attendanceController.updateAttendance)
+
+router.post("/absence", attendanceController.storeAbsence)
 
 module.exports = router
