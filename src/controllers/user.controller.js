@@ -14,6 +14,7 @@ const register = async (req, res) => {
             user.studentIdNumber = req.body.studentIdNumber
             user.fullName = req.body.fullName
             user.gender = req.body.gender
+            user.year = req.body.year
             user.gradeClass = req.body.gradeClass
         } else {
             user.role = req.body.role
@@ -96,6 +97,10 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
     // Hapus token
     res.send("Berhasil keluar")
+}
+
+const delWhoPassed = async (req, res) => {
+
 }
 
 module.exports = { register, profile, updatePassword, login, logout }

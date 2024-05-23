@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
         enum: ["Laki-laki", "Perempuan"],
         required: false
     },
+    year: {
+        type: String,
+        required: true
+    },
     gradeClass: {
         type: String,
         required: false
@@ -65,6 +69,20 @@ userSchema.methods.validPassword = function (password) {
     ).toString("hex")
 
     return this.password === hash
+}
+
+userSchema.methods.updateGrade = function (date) {
+    this.year = date.getFullYear()
+
+    const gradeMap = {
+        "X": "XI",
+        "XI": "XII"
+    }
+
+    this.gradeClass = this.gradeClass.replace(
+        /(X|XI)/,
+        match => gradeMap[match]
+    )
 }
 
 const userModel = mongoose.model("User", userSchema)
