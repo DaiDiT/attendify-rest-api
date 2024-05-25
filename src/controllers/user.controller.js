@@ -6,7 +6,7 @@ const register = async (req, res) => {
     try {
         const checkUser = await userModel.findOne({ email: req.body.email })
     
-        if (checkUser) return responseHandler.badRequest(res, "email is already used")
+        if (checkUser) return responseHandler.badRequest(res, "This email is already used")
     
         const user = new userModel()
         
@@ -36,9 +36,6 @@ const register = async (req, res) => {
 const profile = async (req, res) => {
     try {
         const user = await userModel.findById(req.user._id)
-
-        user.password = undefined
-        user.salt = undefined
     
         responseHandler.ok(res, {...user._doc})
     } catch {
@@ -50,10 +47,10 @@ const updatePassword = async (req, res) => {
     try {
         const { password, newPassword } = req.body
     
-        const user = await userModel.findById(req.user._id)
+        const user = await userModel.findById(req.user._id).select("email password salt")
     
         if (!user) return responseHandler.notFound(res)
-    
+        
         if (!user.validPassword(password)) return responseHandler.badRequest(res, "Wrong password")
     
         user.setPassword(newPassword)
@@ -72,7 +69,7 @@ const login = async (req, res) => {
     
         const user = await userModel.findOne({ email }).select("email password salt id role")
     
-        if (!user) return responseHandler.badRequest(res, "User not exist")
+        if (!user) return responseHandler.badRequest(res, "User didn't exist")
     
         if (!user.validPassword(password)) return responseHandler.badRequest(res, "Wrong password")
     
@@ -98,11 +95,9 @@ const getStudents = async (req, res) => {
     try {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
         
-        const students = await userModel.find().select("studentIdNumber fullName gradeClass").sort({ studentIdNumber: 1 })
+        const students = await userModel.find({ role: "Student"}).select("studentIdNumber fullName gradeClass year").sort({ studentIdNumber: 1 })
 
-        responseHandler.ok(res, {
-            students
-        })
+        responseHandler.ok(res, students)
     } catch {
         responseHandler.error(res)
     }
@@ -111,23 +106,31 @@ const getStudents = async (req, res) => {
 const promotion = async (req, res) => {
     try {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
-        
-        const date = Date.now
+        // Hanya bisa dilakukan bulan juni-juli liburan
+        const date = new Date()
                 
         const year = date.getFullYear().toString()
 
         const gradeMap = {
-            "X": "XI",
-            "XI": "XII",
-            "10": "11",
-            "11": "12"
+            "X ": "XI ",
+            "XI ": "XII ",
+            "10 ": "11 ",
+            "11 ": "12 "
         }
 
-        const studentsToPromote = await userModel.find({ class: { $in: ["X", "XI"] } })
-
+        const studentsToPromote = await userModel.find({ gradeClass: { $regex: /X |XI |10 |11 / } })
+        
         const updatePromises = studentsToPromote.map(student => {
-            const newGradeClass = student.gradeClass.replace(/X|XI|10|11/, match => gradeMap[match])
-            return userModel.updateOne({ _id: student._id }, { year: year }, { gradeClass: newGradeClass })
+            if (student.year === year) return responseHandler.badRequest(res, "Students has already promoted")
+                
+            const newGradeClass = student.gradeClass.replace(/X |XI |10 |11 /, match => gradeMap[match])
+            return userModel.updateOne(
+                { _id: student._id }, 
+                { $set: {
+                    year: year,
+                    gradeClass: newGradeClass
+                }
+            })
         })
 
         await Promise.all(updatePromises)
@@ -142,15 +145,11 @@ const graduation = async (req, res) => {
     try {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
             
-        const date = Date.now
+        const date = new Date()
                 
         const year = (date.getFullYear() - 1).toString()
 
-        const studentsToDelete = await userModel.find({ year: 2019 });
-
-        for (const student of studentsToDelete) {
-            await student.remove();
-        }
+        await userModel.deleteMany({ year: year, gradeClass: { $regex: /XII |12 / } });
 
         responseHandler.ok(res, {"message": "Students deleted"})
     } catch {

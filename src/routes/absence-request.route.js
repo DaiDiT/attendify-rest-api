@@ -10,4 +10,6 @@ router.get("/", tokenMiddleware.auth, absenceRequestController.retrieve)
 
 router.put("/", tokenMiddleware.auth, absenceRequestController.updateStatus)
 
+router.delete("/", tokenMiddleware.auth, absenceRequestController.cancelRequest)
+
 module.exports = router

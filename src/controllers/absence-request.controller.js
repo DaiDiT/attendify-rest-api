@@ -5,17 +5,25 @@ const responseHandler = require("../handlers/response.handler.js")
 const store = async (req, res) => {
     try {
         if (req.user.role !== "Student") return responseHandler.badRequest(res, "You're not a Student")
+        
+        const intendedDate = new Date(req.body.date)
+        const absenceRequest = await absenceRequestModel.findOne({
+            user: req.user._id,
+            intendedDate: intendedDate
+        })
 
-        const absenceRequest = new absenceRequestModel()
-        absenceRequest.user = req.user._id
-        absenceRequest.reason = req.body.reason
-        absenceRequest.detail = req.body.detail
-        absenceRequest.intendedDate = req.body.date
+        if (absenceRequest) return responseHandler.badRequest(res, "You have already made this request")
 
-        await absenceRequest.save()
+        const newAbsenceRequest = new absenceRequestModel()
+        newAbsenceRequest.user = req.user._id
+        newAbsenceRequest.reason = req.body.reason
+        newAbsenceRequest.detail = req.body.detail
+        newAbsenceRequest.intendedDate = intendedDate
+
+        await newAbsenceRequest.save()
 
         responseHandler.created(res, {
-            ...absenceRequest._doc
+            ...newAbsenceRequest._doc
         })
     } catch {
         responseHandler.error(res)
@@ -27,7 +35,7 @@ const retrieve = async (req, res) => {
         let absenceRequest
 
         if (req.user.role === "Student") {
-            absenceRequest = await absenceRequestModel.find({ user: req.user._id }).sort({ createdAt: 0 })
+            absenceRequest = await absenceRequestModel.find({ user: req.user._id })
         } else if (req.user.role === "Admin" && req.query.status) {
             const date = Date.now()
             const startOfDay = new Date(date)
@@ -43,12 +51,12 @@ const retrieve = async (req, res) => {
                 status: req.query.status
             })
         } else {
-            return responseHandler.badRequest(res, "Bad request")
+            return responseHandler.badRequest(res, "Wrong query")
         }
 
         responseHandler.ok(res, absenceRequest)
-    } catch (error) {
-        responseHandler.error(res, error)
+    } catch {
+        responseHandler.error(res)
     }
 }
 
@@ -57,12 +65,18 @@ const updateStatus = async (req, res) => {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
 
         const absenceRequest = await absenceRequestModel.findById(req.body.requestId)
+
+        if (!absenceRequest) return responseHandler.badRequest(res, "No request have made")
+
+        if (absenceRequest.status !== "Ditinjau") return responseHandler.badRequest(res, "You can't change the request")
+
         absenceRequest.setStatus(req.body.status)
 
         await absenceRequest.save()
 
         const attendance = new attendanceModel()
         attendance.user = absenceRequest.user
+        
         if (req.body.status === "Diterima") {
             attendance.status = absenceRequest.reason
         }
@@ -77,4 +91,26 @@ const updateStatus = async (req, res) => {
     }
 }
 
-module.exports = { store, retrieve, updateStatus }
+const cancelRequest = async (req, res) => {
+    try {
+        if (req.user.role !== "Student") return responseHandler.badRequest(res, "You're not a Student")
+
+        const absenceRequest = await absenceRequestModel.findById(req.body.requestId)
+
+        if (!absenceRequest) return responseHandler.badRequest(res, "No request have made")
+            
+        if (absenceRequest.status === "Ditinjau") {
+            await absenceRequestModel.deleteOne({ _id: absenceRequest._id })
+        } else {
+            return responseHandler.badRequest(res, "You can no longer delete this request")
+        }
+
+        responseHandler.ok(res, {
+            ...absenceRequest._doc,
+        })
+    } catch {
+        responseHandler.error(res)
+    }
+}
+
+module.exports = { store, retrieve, updateStatus, cancelRequest }
