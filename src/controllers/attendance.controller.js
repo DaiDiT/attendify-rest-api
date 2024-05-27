@@ -1,7 +1,7 @@
 const attendanceModel = require("../models/attendance.model.js")
 const userModel = require("../models/user.model.js")
 const responseHandler = require("../handlers/response.handler.js")
-const PDFDocument = require('pdfkit')
+const ExcelJS = require('exceljs')
 
 const store = async (req, res) => {
     try {
@@ -47,34 +47,29 @@ const retrieve = async (req, res) => {
         let studentIdNumber
 
         if (req.user.role === "Student") {
-            if (req.query.type === "daily") {
-                endOfDay.setDate(startOfDay.getDate() + 1)
-            } else if (req.query.type === "weekly") {
-                startOfDay.setDate(startOfDay.getDate() - 7)
-            } else {
-                return responseHandler.badRequest(res, "Wrong query")
-            }
-
             studentIdNumber = req.user.studentIdNumber
-        } else if (req.user.role === "Admin") {
-            if (req.query.type === "semiannual") {
-                if (startOfDay.getMonth() >= 6) {
-                    startOfDay.setMonth(5)
-                    startOfDay.setDate(31)
-                    endOfDay.setMonth(12)
-                    endOfDay.setDate(31)
-                } else {
-                    startOfDay.setMonth(0)
-                    startOfDay.setDate(1)
-                    endOfDay.setMonth(5)
-                    endOfDay.setDate(31)
-                }
-            } else {
-                return responseHandler.badRequest(res, "Bad request")
-            }
-
+        } else if (req.query.nis) {
             studentIdNumber = req.query.nis
         }
+
+        if (req.query.type === "daily") {
+            endOfDay.setDate(startOfDay.getDate() + 1)
+        } else if (req.query.type === "weekly") {
+            startOfDay.setDate(startOfDay.getDate() - 7)
+        } else if (req.query.type === "semiannual") {
+            if (startOfDay.getMonth() >= 6) {
+                startOfDay.setMonth(5)
+                startOfDay.setDate(31)
+                endOfDay.setMonth(12)
+                endOfDay.setDate(31)
+            } else {
+                startOfDay.setMonth(0)
+                startOfDay.setDate(1)
+                endOfDay.setMonth(5)
+                endOfDay.setDate(31)
+            }
+        }
+
         const student = await userModel.findOne({ studentIdNumber: studentIdNumber })
         const attendance = await attendanceModel.find({
             user: student._id,
@@ -162,28 +157,60 @@ const storeAbsence = async (req, res) => {
 
 const getDocument = async (req, res) => {
     try {
-        //if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
+        if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
 
-        const attendances = await attendanceModel.aggregate([
+        const date = Date.now()
+        const startOfDay = new Date(date)
+        startOfDay.setHours(0, 0, 0, 0)
+        const endOfDay = new Date(startOfDay)
+        const year = startOfDay.getFullYear()
+        let semester
+
+        if (startOfDay.getMonth() >= 6) {
+            semester = 1
+            startOfDay.setMonth(5)
+            startOfDay.setDate(31)
+            endOfDay.setMonth(12)
+            endOfDay.setDate(31)
+        } else {
+            semester = 2
+            startOfDay.setMonth(0)
+            startOfDay.setDate(1)
+            endOfDay.setMonth(5)
+            endOfDay.setDate(31)
+        }
+
+        const attendances = await userModel.aggregate([
             {
-                $lookup: {
-                    from: 'users',
-                    localField: 'user',
-                    foreignField: '_id',
-                    as: 'userDetails'
+                $match: {
+                    role: "Student",
+                    createdAt: { $gte: startOfDay, $lt: endOfDay }
                 }
             },
-            { $unwind: "$userDetails" },
+            {
+                $lookup: {
+                    from: 'attendances',
+                    localField: '_id',
+                    foreignField: 'user',
+                    as: 'attendanceDetails'
+                }
+            },
+            {
+                $unwind: {
+                    path: "$attendanceDetails",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
             {
                 $group: {
-                    _id: "$userDetails._id",
-                    studentIdNumber: { $first: "$userDetails.studentIdNumber" },
-                    fullName: { $first: "$userDetails.fullName" },
-                    gradeClass: { $first: "$userDetails.gradeClass" },
-                    hadir: { $sum: { $cond: [{ $eq: ["$status", "Hadir"] }, 1, 0] } },
-                    izin: { $sum: { $cond: [{ $eq: ["$status", "Izin"] }, 1, 0] } },
-                    sakit: { $sum: { $cond: [{ $eq: ["$status", "Sakit"] }, 1, 0] } },
-                    alfa: { $sum: { $cond: [{ $eq: ["$status", "Alfa"] }, 1, 0] } }
+                    _id: "$_id",
+                    studentIdNumber: { $first: "$studentIdNumber" },
+                    fullName: { $first: "$fullName" },
+                    gradeClass: { $first: "$gradeClass" },
+                    hadir: { $sum: { $cond: [{ $eq: ["$attendanceDetails.status", "Hadir"] }, 1, 0] } },
+                    izin: { $sum: { $cond: [{ $eq: ["$attendanceDetails.status", "Izin"] }, 1, 0] } },
+                    sakit: { $sum: { $cond: [{ $eq: ["$attendanceDetails.status", "Sakit"] }, 1, 0] } },
+                    alfa: { $sum: { $cond: [{ $eq: ["$attendanceDetails.status", "Alfa"] }, 1, 0] } }
                 }
             },
             {
@@ -206,64 +233,72 @@ const getDocument = async (req, res) => {
         const result = attendances.map((attendance, index) => ({
             No: index + 1,
             ...attendance
-        }));
+        }))
 
-        // Buat dokumen PDF
-        const doc = new PDFDocument();
-        let filename = 'rekap-absensi.pdf';
-        filename = encodeURIComponent(filename);
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Rekap Absensi')
 
-        // Set response headers
-        res.setHeader('Content-disposition', 'attachment; filename="' + filename + '"');
-        res.setHeader('Content-type', 'application/pdf');
+        worksheet.addRow(["","","","","","","","","Semester", semester])
+        worksheet.addRow(["","","","","","","","","Tahun", year])
 
-        // Pipe the PDF into the response
-        doc.pipe(res);
+        worksheet.mergeCells('A4:A5')
+        worksheet.mergeCells('B4:B5')
+        worksheet.mergeCells('C4:C5')
+        worksheet.mergeCells('D4:D5')
+        worksheet.mergeCells('E4:H4')
 
-        // Judul
-        doc.fontSize(14).text('Rekap Absensi', { align: 'center' });
+        worksheet.getCell('A4').value = 'No'
+        worksheet.getCell('B4').value = 'NIS'
+        worksheet.getCell('C4').value = 'Nama Lengkap'
+        worksheet.getCell('D4').value = 'Kelas'
+        worksheet.getCell('E4').value = 'Status Kehadiran'
+        worksheet.getCell('E5').value = 'Hadir'
+        worksheet.getCell('F5').value = 'Izin'
+        worksheet.getCell('G5').value = 'Sakit'
+        worksheet.getCell('H5').value = 'Alfa'
 
-        // Tambah space
-        doc.moveDown();
+        worksheet.getColumn(1).width = 5
+        worksheet.getColumn(2).width = 12
+        worksheet.getColumn(3).width = 50
+        worksheet.getColumn(4).width = 12
+        worksheet.getColumn(5).width = 6
+        worksheet.getColumn(6).width = 6
+        worksheet.getColumn(7).width = 6
+        worksheet.getColumn(8).width = 6
 
-        // Buat tabel header
-        doc.fontSize(10);
+        result.forEach((user) => {
+            worksheet.addRow(Object.values(user))
+        })
 
-        const tableTop = 120;
+        worksheet.getRow(4).font = { bold: true }
+        worksheet.getRow(5).font = { bold: true }
 
-        doc.text('No', 50, tableTop);
-        doc.text('NIS', 80, tableTop);
-        doc.text('Nama Lengkap', 150, tableTop);
-        doc.text('Kelas', 300, tableTop);
-        doc.text('Status Kehadiran', 370, tableTop);
+        worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+            if (rowNumber >= 4) {
+                row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    }
+                    if (colNumber >= 5 || rowNumber <= 5) {
+                        cell.alignment = {
+                            horizontal: 'center',
+                            vertical: 'middle'
+                        } 
+                    }
+                })
+            }
+        })
 
-        const statusTop = tableTop + 12;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        res.setHeader('Content-Disposition', 'attachment; filename=rekap-absensi.xlsx')
 
-        doc.text('Hadir', 370, statusTop);
-        doc.text('Izin', 420, statusTop);
-        doc.text('Sakit', 470, statusTop);
-        doc.text('Alfa', 520, statusTop);
-
-        // Garis bawah header
-        doc.moveTo(50, tableTop + 25).lineTo(570, tableTop + 25).stroke();
-
-        // Isi tabel
-        let y = tableTop + 30;
-        result.forEach(item => {
-            doc.text(item.No, 50, y);
-            doc.text(item.studentIdNumber, 80, y);
-            doc.text(item.fullName, 150, y);
-            doc.text(item.gradeClass, 300, y);
-            doc.text(item.hadir, 370, y);
-            doc.text(item.izin, 420, y);
-            doc.text(item.sakit, 470, y);
-            doc.text(item.alfa, 520, y);
-            y += 20;
-        });
-
-        // Finalize the PDF and end the stream
-        doc.end();
-    } catch {
+        await workbook.xlsx.write(res)
+        res.end()
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }

@@ -36,22 +36,17 @@ const retrieve = async (req, res) => {
 
         if (req.user.role === "Student") {
             absenceRequest = await absenceRequestModel.find({ user: req.user._id })
-        } else if (req.user.role === "Admin" && req.query.status) {
+        } else if (req.user.role === "Admin") {
             const date = Date.now()
             const startOfDay = new Date(date)
             startOfDay.setHours(0, 0, 0, 0)
             const endOfDay = new Date(startOfDay)
             endOfDay.setDate(startOfDay.getDate() + 1)
 
-            absenceRequest = await absenceRequestModel.find({
-                intendedDate: {
-                    $gte: startOfDay,
-                    $lt: endOfDay
-                },
-                status: req.query.status
-            })
-        } else {
-            return responseHandler.badRequest(res, "Wrong query")
+            let query = req.query
+            query["intendedDate"] = { $gte: startOfDay, $lt: endOfDay }
+            
+            absenceRequest = await absenceRequestModel.find(query)
         }
 
         responseHandler.ok(res, absenceRequest)

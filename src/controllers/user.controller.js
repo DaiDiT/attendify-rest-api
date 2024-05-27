@@ -95,7 +95,10 @@ const getStudents = async (req, res) => {
     try {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
         
-        const students = await userModel.find({ role: "Student"}).select("studentIdNumber fullName gradeClass year").sort({ studentIdNumber: 1 })
+        let query = req.query
+        query["role"] = "Student"
+
+        const students = await userModel.find(query).select("studentIdNumber fullName gradeClass year").sort({ studentIdNumber: 1 })
 
         responseHandler.ok(res, students)
     } catch {
@@ -106,8 +109,10 @@ const getStudents = async (req, res) => {
 const promotion = async (req, res) => {
     try {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
-        // Hanya bisa dilakukan bulan juni-juli liburan
+        
         const date = new Date()
+
+        if (date.getMonth() <= 5) return responseHandler.badRequest(res, "Wrong time to promote students")
                 
         const year = date.getFullYear().toString()
 
@@ -146,7 +151,9 @@ const graduation = async (req, res) => {
         if (req.user.role !== "Admin") return responseHandler.badRequest(res, "You're not an Administrator")
             
         const date = new Date()
-                
+        
+        if (date.getMonth() <= 5) return responseHandler.badRequest(res, "Wrong time to promote students")
+        
         const year = (date.getFullYear() - 1).toString()
 
         await userModel.deleteMany({ year: year, gradeClass: { $regex: /XII |12 / } });

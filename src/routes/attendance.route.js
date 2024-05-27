@@ -8,7 +8,7 @@ router.post("/", tokenMiddleware.auth, attendanceController.store)
 
 router.get("/", tokenMiddleware.auth, attendanceController.retrieve)
 
-router.get("/recap", attendanceController.getDocument)
+router.get("/recap", tokenMiddleware.auth, attendanceController.getDocument)
 
 router.put("/", tokenMiddleware.auth, attendanceController.updateAttendance)
 
