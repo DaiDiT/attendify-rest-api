@@ -22,7 +22,7 @@ const created = (res, data) => responseWithData(res, 201, {
 
 const unauthorize = (res) => responseWithData(res, 401, {
     status: "Failed",
-    message: "Unathorized"
+    message: "Unauthorized"
 })
 
 const notFound = (res) => responseWithData(res, 404, {
