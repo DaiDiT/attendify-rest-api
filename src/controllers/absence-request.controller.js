@@ -46,7 +46,7 @@ const retrieve = async (req, res) => {
             let query = req.query
             query["intendedDate"] = { $gte: startOfDay, $lt: endOfDay }
             
-            absenceRequest = await absenceRequestModel.find(query)
+            absenceRequest = await absenceRequestModel.find(query).populate('user', 'fullName gradeClass').exec()
         }
 
         responseHandler.ok(res, absenceRequest)

@@ -111,7 +111,7 @@ const updateAttendance = async (req, res) => {
 
         await attendance.save()
 
-        responseHandler.created(res, {
+        responseHandler.ok(res, {
             ...attendance._doc,
         })
     } catch {
