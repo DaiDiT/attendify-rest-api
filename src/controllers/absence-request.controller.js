@@ -25,7 +25,8 @@ const store = async (req, res) => {
         responseHandler.created(res, {
             ...newAbsenceRequest._doc
         })
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }
@@ -50,7 +51,8 @@ const retrieve = async (req, res) => {
         }
 
         responseHandler.ok(res, absenceRequest)
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }
@@ -81,7 +83,8 @@ const updateStatus = async (req, res) => {
         responseHandler.created(res, {
             ...absenceRequest._doc,
         })
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }
@@ -103,7 +106,8 @@ const cancelRequest = async (req, res) => {
         responseHandler.ok(res, {
             ...absenceRequest._doc,
         })
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }

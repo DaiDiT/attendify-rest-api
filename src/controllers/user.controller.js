@@ -1,16 +1,21 @@
 const jsonwebtoken = require("jsonwebtoken")
 const userModel = require("../models/user.model.js")
 const responseHandler = require("../handlers/response.handler.js")
+const tokenMiddleware = require("../middlewares/token.middleware.js")
 
 const register = async (req, res) => {
     try {
         const checkUser = await userModel.findOne({ email: req.body.email })
     
         if (checkUser) return responseHandler.badRequest(res, "This email is already used")
-    
+        
         const user = new userModel()
         
         if (!req.body.role) {
+            const checkStudent = await userModel.findOne({ studentIdNumber: req.body.studentIdNumber })
+
+            if (checkStudent) return responseHandler.badRequest(res, "This Id Number is already registered")
+
             user.studentIdNumber = req.body.studentIdNumber
             user.fullName = req.body.fullName
             user.gender = req.body.gender
@@ -164,4 +169,22 @@ const graduation = async (req, res) => {
     }
 }
 
-module.exports = { register, profile, updatePassword, login, getStudents, promotion, graduation }
+const checkToken = async (req, res) => {
+    try {
+        const decodedToken = tokenMiddleware.decodeToken(req)
+
+        if (!decodedToken) return responseHandler.ok(res, {"token": "Invalid"})
+        
+        const token = jsonwebtoken.sign(
+            { data: decodedToken },
+            process.env.TOKEN_SECRET,
+            { expiresIn: "24h" }
+        )
+
+        responseHandler.ok(res, {token})
+    } catch {
+        responseHandler.error(res)
+    }
+}
+
+module.exports = { register, profile, checkToken, updatePassword, login, getStudents, promotion, graduation }

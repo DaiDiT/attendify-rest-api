@@ -33,7 +33,8 @@ const store = async (req, res) => {
         responseHandler.created(res, {
             ...newAttendance._doc
         })
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }
@@ -80,7 +81,8 @@ const retrieve = async (req, res) => {
         })
 
         responseHandler.ok(res, attendance)
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }
@@ -114,7 +116,8 @@ const updateAttendance = async (req, res) => {
         responseHandler.ok(res, {
             ...attendance._doc,
         })
-    } catch {
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }
@@ -149,8 +152,9 @@ const storeAbsence = async (req, res) => {
             }
         }
 
-        responseHandler.created(res, { "message": "Success" })
-    } catch {
+        responseHandler.created(res, { "message": "Absences successfully created" })
+    } catch(err) {
+        console.log(err)
         responseHandler.error(res)
     }
 }

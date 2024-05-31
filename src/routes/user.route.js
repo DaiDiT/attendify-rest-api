@@ -8,6 +8,8 @@ router.post("/register", userController.register)
 
 router.post("/login", userController.login)
 
+router.get("/token", userController.checkToken)
+
 router.get("/", tokenMiddleware.auth, userController.profile)
 
 router.put("/", tokenMiddleware.auth, userController.updatePassword)
