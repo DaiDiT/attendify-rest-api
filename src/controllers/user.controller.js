@@ -176,7 +176,7 @@ const checkToken = async (req, res) => {
         if (!decodedToken) return responseHandler.ok(res, {"token": "Invalid"})
         
         const token = jsonwebtoken.sign(
-            { data: decodedToken },
+            { data: decodedToken.data },
             process.env.TOKEN_SECRET,
             { expiresIn: "24h" }
         )
